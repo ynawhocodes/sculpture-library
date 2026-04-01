@@ -1,0 +1,16 @@
+.en .author,
+.en .title,
+.en .year,
+.kr .year,
+.kr .title,
+.kr .title .ur,
+.titleen,
+.titlekr,
+footer p,
+footer a {
+  background: linear-gradient(var(--tc-a, 136deg), black var(--tc-p, 56%), white var(--tc-p, 56%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-attachment: fixed;
+}
