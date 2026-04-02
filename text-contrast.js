@@ -1,85 +1,82 @@
 (function () {
   var MOBILE = 900;
-  var _svh = null;
-  var _lastWidth = null;
+  var TEXT_SELS =
+    '.en .author,.en .title,.en .year,' +
+    '.kr .year,.kr .title,.kr .title .ur,' +
+    '.titleen,.titlekr,footer p,footer a';
 
-  /* 100svh를 측정하여 캐시. URL바 표시/숨김에 영향받지 않는 안정적인 높이값 */
-  function measureSvh() {
-    var el = document.createElement('div');
-    el.style.cssText = 'position:fixed;top:0;height:100svh;visibility:hidden;pointer-events:none';
-    document.documentElement.appendChild(el);
-    _svh = el.offsetHeight;
-    el.remove();
-    return _svh;
-  }
-
-  function getSvh() {
-    if (_svh === null) measureSvh();
-    return _svh;
-  }
-
+  /* .arc 요소의 실제 렌더링 위치에서 대각선 좌표를 측정 */
   function getParams() {
-    var vw = window.innerWidth, vh = getSvh();
-    var m = vw <= MOBILE;
+    var arcEl = document.querySelector('.arc');
+    var r = arcEl.getBoundingClientRect();
+    var bl = parseFloat(getComputedStyle(arcEl).borderLeftWidth) || 0;
     return {
-      // diagonal from bottom-left to top-right of the brown triangle
-      x1: m ? 0 : vw * 0.3,   y1: vh,
-      x2: m ? vw : vw * 0.89, y2: 0,
-      vw: vw, vh: vh
+      x1: r.left,          y1: r.bottom,       // 대각선 시작 (아래)
+      x2: r.left + bl,     y2: r.top            // 대각선 끝 (위)
     };
   }
 
-  /* x on diagonal at given y */
   function diagX(y, p) {
-    var t = (p.y1 - y) / (p.y1 - p.y2);
-    return p.x1 + (p.x2 - p.x1) * t;
+    if (p.y1 === p.y2) return p.x1;
+    return p.x1 + (p.x2 - p.x1) * (p.y1 - y) / (p.y1 - p.y2);
   }
 
-  /* y on diagonal at given x */
   function diagY(x, p) {
     if (p.x2 === p.x1) return p.y1;
     return p.y1 + (p.y2 - p.y1) * (x - p.x1) / (p.x2 - p.x1);
   }
 
-  /* compute CSS custom properties for the viewport-fixed text gradient */
-  function computeGradient() {
+  function run() {
     var p = getParams();
 
-    // normal to diagonal, pointing into brown area (screen-coords, y-down)
-    var nx = p.y1 - p.y2;   // vh
-    var ny = p.x2 - p.x1;   // delta-x of diagonal
-
-    // CSS linear-gradient angle (clockwise from north)
-    var ang = Math.atan2(nx, -ny) * 180 / Math.PI;
-
-    // project viewport corners onto gradient-normal to find 0%/100% extents
-    var cx = p.vw / 2, cy = p.vh / 2;
+    // 대각선 법선 (갈색 방향)
+    var nx = p.y1 - p.y2;
+    var ny = p.x2 - p.x1;
     var nl = Math.sqrt(nx * nx + ny * ny);
+    if (nl === 0) return;
     var ux = nx / nl, uy = ny / nl;
 
-    var corners = [[0, 0], [p.vw, 0], [0, p.vh], [p.vw, p.vh]];
-    var projs = corners.map(function (c) {
-      return (c[0] - cx) * ux + (c[1] - cy) * uy;
-    });
-    var mn = Math.min.apply(null, projs);
-    var mx = Math.max.apply(null, projs);
+    // CSS gradient 각도
+    var ang = Math.atan2(nx, -ny) * 180 / Math.PI;
 
-    // project diagonal midpoint to get the transition position
-    var dmx = (p.x1 + p.x2) / 2, dmy = (p.y1 + p.y2) / 2;
-    var dp = (dmx - cx) * ux + (dmy - cy) * uy;
-    var pct = (dp - mn) / (mx - mn) * 100;
+    // 대각선 위 임의 점의 법선 투영값 (모든 점에서 동일)
+    var diagProj = p.x1 * ux + p.y1 * uy;
 
-    var root = document.documentElement;
-    root.style.setProperty('--tc-a', ang + 'deg');
-    root.style.setProperty('--tc-p', pct + '%');
+    // 각 텍스트 요소에 개별 그라디언트 적용
+    var els = document.querySelectorAll(TEXT_SELS);
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue;
+
+      // 요소 꼭짓점들을 법선 방향으로 투영
+      var projs = [
+        rect.left  * ux + rect.top    * uy,
+        rect.right * ux + rect.top    * uy,
+        rect.left  * ux + rect.bottom * uy,
+        rect.right * ux + rect.bottom * uy
+      ];
+      var mn = Math.min.apply(null, projs);
+      var mx = Math.max.apply(null, projs);
+      var range = mx - mn;
+
+      var pct = range === 0
+        ? (mn >= diagProj ? 0 : 100)
+        : Math.max(0, Math.min(100, (diagProj - mn) / range * 100));
+
+      el.style.background =
+        'linear-gradient(' + ang + 'deg,black ' + pct + '%,white ' + pct + '%)';
+      el.style.webkitBackgroundClip = 'text';
+      el.style.backgroundClip = 'text';
+      el.style.webkitTextFillColor = 'transparent';
+    }
+
+    updateBorders(p);
   }
 
-  /* set border colors (or border-image gradients when a border crosses the diagonal) */
-  function updateBorders() {
-    var p = getParams();
-    var m = p.vw <= MOBILE;
+  function updateBorders(p) {
+    var m = window.innerWidth <= MOBILE;
 
-    // .en li — horizontal border-top
     var ens = document.querySelectorAll('.en li');
     for (var i = 0; i < ens.length; i++) {
       var r = ens[i].getBoundingClientRect();
@@ -97,7 +94,6 @@
       }
     }
 
-    // .kr li — vertical border (left on desktop, right on mobile)
     var krs = document.querySelectorAll('.kr li');
     for (var j = 0; j < krs.length; j++) {
       var r2 = krs[j].getBoundingClientRect();
@@ -119,23 +115,20 @@
     }
   }
 
-  function run() {
-    computeGradient();
-    updateBorders();
+  var _raf = null;
+  function scheduleRun() {
+    if (!_raf) {
+      _raf = requestAnimationFrame(function () {
+        _raf = null;
+        run();
+      });
+    }
   }
 
   function init() {
     run();
-    window.addEventListener('resize', function () {
-      /* svh 재측정은 가로폭이 바뀔 때(회전 등)만 */
-      if (window.innerWidth !== _lastWidth) {
-        _lastWidth = window.innerWidth;
-        measureSvh();
-      }
-      run();
-    });
-    window.addEventListener('scroll', updateBorders);
-    _lastWidth = window.innerWidth;
+    window.addEventListener('resize', scheduleRun);
+    window.addEventListener('scroll', scheduleRun);
   }
 
   if (document.readyState === 'loading') {
