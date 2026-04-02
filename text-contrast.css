@@ -1,1 +1,14 @@
 /* text-contrast.js가 인라인으로 모든 스타일을 적용합니다 */
+
+/* iOS Safari rubber-band 방지 */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.scroll-wrap {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}

@@ -128,7 +128,8 @@
   function init() {
     run();
     window.addEventListener('resize', scheduleRun);
-    window.addEventListener('scroll', scheduleRun);
+    var scrollEl = document.querySelector('.scroll-wrap') || window;
+    scrollEl.addEventListener('scroll', scheduleRun);
   }
 
   if (document.readyState === 'loading') {
