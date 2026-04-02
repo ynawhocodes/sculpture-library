@@ -1,8 +1,25 @@
 (function () {
   var MOBILE = 900;
+  var _svh = null;
+  var _lastWidth = null;
+
+  /* 100svh를 측정하여 캐시. URL바 표시/숨김에 영향받지 않는 안정적인 높이값 */
+  function measureSvh() {
+    var el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:0;height:100svh;visibility:hidden;pointer-events:none';
+    document.documentElement.appendChild(el);
+    _svh = el.offsetHeight;
+    el.remove();
+    return _svh;
+  }
+
+  function getSvh() {
+    if (_svh === null) measureSvh();
+    return _svh;
+  }
 
   function getParams() {
-    var vw = window.innerWidth, vh = window.innerHeight;
+    var vw = window.innerWidth, vh = getSvh();
     var m = vw <= MOBILE;
     return {
       // diagonal from bottom-left to top-right of the brown triangle
@@ -109,8 +126,16 @@
 
   function init() {
     run();
-    window.addEventListener('resize', run);
-    window.addEventListener('scroll', run);
+    window.addEventListener('resize', function () {
+      /* svh 재측정은 가로폭이 바뀔 때(회전 등)만 */
+      if (window.innerWidth !== _lastWidth) {
+        _lastWidth = window.innerWidth;
+        measureSvh();
+      }
+      run();
+    });
+    window.addEventListener('scroll', updateBorders);
+    _lastWidth = window.innerWidth;
   }
 
   if (document.readyState === 'loading') {
