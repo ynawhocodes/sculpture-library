@@ -111,7 +111,7 @@
     for (var i = 0; i < _textCache.length; i++) {
       var d = _textCache[i];
       var pct = Math.max(0, Math.min(100, d.a + st * d.b));
-      d.el.style.background =
+      d.el.style.backgroundImage =
         'linear-gradient(' + _ang + 'deg,black ' + pct + '%,white ' + pct + '%)';
     }
 
