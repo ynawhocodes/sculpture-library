@@ -15,8 +15,10 @@
   function getParams() {
     var arcEl = document.querySelector('.arc');
     var r = arcEl.getBoundingClientRect();
-    var bl = parseFloat(getComputedStyle(arcEl).borderLeftWidth) || 0;
-    return { x1: r.left, y1: r.bottom, x2: r.left + bl, y2: r.top };
+    var cs = getComputedStyle(arcEl);
+    var bl = parseFloat(cs.borderLeftWidth) || 0;
+    var bb = parseFloat(cs.borderBottomWidth) || 0;
+    return { x1: r.left, y1: r.bottom, x2: r.left + bl, y2: r.bottom - bb };
   }
 
   /*
