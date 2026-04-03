@@ -1,5 +1,7 @@
-/* iOS Safari rubber-band 방지 */
-html, body {
+/* iOS Safari 툴바 고정 */
+body {
+  position: fixed;
+  width: 100%;
   height: 100%;
   overflow: hidden;
 }
