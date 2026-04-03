@@ -6,10 +6,21 @@
     '.titleen,.titlekr,footer p,footer a';
 
   var _scrollEl = null;
+  var _textCache = [];
   var _enCache = [];
   var _krCache = [];
+  var _ang = 0;
 
   function getParams() {
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var m = vw <= MOBILE;
+
+    if (m) {
+      /* 모바일: 삼각형이 뷰포트 모서리를 정확히 이으므로 직접 계산 */
+      return { x1: 0, y1: vh, x2: vw, y2: 0 };
+    }
+    /* 데스크탑: .arc 요소에서 측정 */
     var arcEl = document.querySelector('.arc');
     var r = arcEl.getBoundingClientRect();
     var cs = getComputedStyle(arcEl);
@@ -24,20 +35,16 @@
     var nl = Math.sqrt(nx * nx + ny * ny);
     if (nl === 0) return;
     var ux = nx / nl, uy = ny / nl;
-    var ang = Math.atan2(nx, -ny) * 180 / Math.PI;
+    _ang = Math.atan2(nx, -ny) * 180 / Math.PI;
     var diagProj = p.x1 * ux + p.y1 * uy;
 
     _scrollEl = document.querySelector('.scroll-wrap') || null;
     var st = _scrollEl ? _scrollEl.scrollTop : 0;
     var m = window.innerWidth <= MOBILE;
-    var root = document.documentElement;
 
-    /* 루트에 각도·스크롤 설정 */
-    root.style.setProperty('--tc-ang', ang + 'deg');
-    root.style.setProperty('--scroll', st);
-
-    /* 텍스트 요소: CSS 변수만 세팅, 스크롤 시 JS 개입 없음 */
+    /* 텍스트 요소 */
     var els = document.querySelectorAll(TEXT_SELS);
+    _textCache = [];
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
       var rect = el.getBoundingClientRect();
@@ -52,15 +59,18 @@
       var mn = Math.min.apply(null, projs);
       var range = Math.max.apply(null, projs) - mn;
 
-      var a = range === 0 ? 50 : (diagProj - mn) / range * 100;
-      var b = range === 0 ? 0 : uy / range * 100;
+      _textCache.push({
+        el: el,
+        a: range === 0 ? 50 : (diagProj - mn) / range * 100,
+        b: range === 0 ? 0 : uy / range * 100
+      });
 
-      el.classList.add('tc-text');
-      el.style.setProperty('--tc-a', a);
-      el.style.setProperty('--tc-b', b);
+      el.style.webkitBackgroundClip = 'text';
+      el.style.backgroundClip = 'text';
+      el.style.webkitTextFillColor = 'transparent';
     }
 
-    /* 보더 프리컴퓨트 */
+    /* .en li 보더 */
     var dxSlope = (p.x2 - p.x1) / (p.y1 - p.y2);
     var ens = document.querySelectorAll('.en li');
     _enCache = [];
@@ -75,6 +85,7 @@
       });
     }
 
+    /* .kr li 보더 */
     var krs = document.querySelectorAll('.kr li');
     _krCache = [];
     for (var k = 0; k < krs.length; k++) {
@@ -92,10 +103,16 @@
     }
   }
 
-  /* 스크롤: --scroll 1개만 업데이트 + 보더 산술 */
+  /* 스크롤 시 동기 실행 — rAF 없이 즉시 반영 */
   function onScroll() {
     var st = _scrollEl ? _scrollEl.scrollTop : 0;
-    document.documentElement.style.setProperty('--scroll', st);
+
+    for (var i = 0; i < _textCache.length; i++) {
+      var d = _textCache[i];
+      var pct = Math.max(0, Math.min(100, d.a + st * d.b));
+      d.el.style.backgroundImage =
+        'linear-gradient(' + _ang + 'deg,black ' + pct + '%,white ' + pct + '%)';
+    }
 
     for (var j = 0; j < _enCache.length; j++) {
       var e = _enCache[j];

@@ -10,15 +10,3 @@ html, body {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
 }
-
-/* 텍스트 대비: CSS가 --scroll 변수로 실시간 계산 */
-.tc-text {
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-image: linear-gradient(
-    var(--tc-ang),
-    black calc(clamp(0, var(--tc-a) + var(--scroll, 0) * var(--tc-b), 100) * 1%),
-    white calc(clamp(0, var(--tc-a) + var(--scroll, 0) * var(--tc-b), 100) * 1%)
-  );
-}
